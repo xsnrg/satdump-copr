@@ -4,7 +4,7 @@
 
 Name:           satdump
 Version:        2.0.0
-Release:        0.2.%{commitdate}git%{shortcommit}%{?dist}
+Release:        0.3.%{commitdate}git%{shortcommit}%{?dist}
 Summary:        Generic satellite data processing software
 
 License:        GPL-3.0-or-later
@@ -40,6 +40,7 @@ BuildRequires:  hackrf-devel
 BuildRequires:  airspyone_host-devel
 BuildRequires:  airspyhf-devel
 BuildRequires:  uhd-devel
+BuildRequires:  boost-devel
 BuildRequires:  libiio-devel
 
 %global simd_flags -DPLUGIN_SIMD_SSE41=OFF -DPLUGIN_SIMD_AVX2=OFF -DPLUGIN_SIMD_NEON=OFF
@@ -98,6 +99,9 @@ desktop-file-validate %{buildroot}%{_datadir}/applications/satdump.desktop
 %changelog
 * Sun Sep 27 2026 Jim Howard <xsnrg@users.noreply.github.com> - 2.0.0-0.2.20260921gitf3d82adbf
 - Add sqlite-devel required by master src-core
+
+* Sun Sep 27 2026 Jim Howard <xsnrg@users.noreply.github.com> - 2.0.0-0.3.20260921gitf3d82adbf
+- Add boost-devel (uhd usrp plugin headers)
 
 * Sun Sep 27 2026 Jim Howard <xsnrg@users.noreply.github.com> - 1.2.2-2
 - Drop BladeRF and LimeSuite; those -devel packages are not in Fedora
