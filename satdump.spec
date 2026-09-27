@@ -74,7 +74,7 @@ SatDump is a generic satellite data processing program. It demodulates,
 decodes, and processes recorded or live satellite transmissions.
 
 %prep
-%autosetup -n SatDump-%{commit}
+%autosetup -p1 -n SatDump-%{commit}
 
 %build
 %cmake \
