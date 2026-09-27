@@ -5,7 +5,7 @@ Copr packaging repo for SatDump release tags. The only artifact is `satdump.spec
 ## Release workflow
 
 - Copr auto-builds on push to `master`.
-- Track the latest non-prerelease GitHub tag (`SatDump/SatDump`). Do not package master or `2.0.0-alpha` snapshots unless asked.
+- Track current `SatDump/SatDump` master. The 1.2.2 tag is stale. Pin `%global commit` to the commit being packaged.
 - To release: bump `Version:`, reset `Release:` to `1%{?dist}`, prepend a `%changelog` entry, commit, push.
 - Entry format:
 

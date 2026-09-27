@@ -1,11 +1,15 @@
+%global commit f3d82adbfe04e57c596b93479d687f4b830ee26c
+%global commitdate 20260921
+%global shortcommit %(c=%{commit}; echo ${c:0:9})
+
 Name:           satdump
-Version:        1.2.2
-Release:        2%{?dist}
+Version:        2.0.0
+Release:        0.1.%{commitdate}git%{shortcommit}%{?dist}
 Summary:        Generic satellite data processing software
 
 License:        GPL-3.0-or-later
 URL:            https://github.com/SatDump/SatDump
-Source0:        https://github.com/SatDump/SatDump/archive/refs/tags/%{version}.tar.gz
+Source0:        https://github.com/SatDump/SatDump/archive/%{commit}.tar.gz
 
 BuildRequires:  cmake
 BuildRequires:  ninja-build
@@ -50,7 +54,7 @@ SatDump is a generic satellite data processing program. It demodulates,
 decodes, and processes recorded or live satellite transmissions.
 
 %prep
-%autosetup -n SatDump-%{version}
+%autosetup -n SatDump-%{commit}
 
 %build
 %cmake \
@@ -91,6 +95,9 @@ desktop-file-validate %{buildroot}%{_datadir}/applications/satdump.desktop
 %{_includedir}/satdump/
 
 %changelog
+* Sun Sep 27 2026 Jim Howard <xsnrg@users.noreply.github.com> - 2.0.0-0.1.20260921gitf3d82adbf
+- Track current master; 1.2.2 is not where upstream fixes land
+
 * Sun Sep 27 2026 Jim Howard <xsnrg@users.noreply.github.com> - 1.2.2-2
 - Drop BladeRF and LimeSuite; those -devel packages are not in Fedora
 
