@@ -4,7 +4,7 @@
 
 Name:           satdump
 Version:        2.0.0
-Release:        0.13.%{commitdate}git%{shortcommit}%{?dist}
+Release:        0.14.%{commitdate}git%{shortcommit}%{?dist}
 Summary:        Generic satellite data processing software
 
 License:        GPL-3.0-or-later
@@ -77,6 +77,10 @@ decodes, and processes recorded or live satellite transmissions.
 %autosetup -p1 -n SatDump-%{commit}
 
 %build
+# satdump's CMakeLists.txt appends -march=native to the compile flags unless the
+# CI env var is set. That bakes the *builder* CPU's ISA (e.g. AVX-512 %zmm ops)
+# into libsatdump_core, producing SIGILL at library load on older CPUs. Disable it.
+export CI=true
 %cmake \
   -DBUILD_GUI=ON \
   -DBUILD_OPENMP=ON \
@@ -117,6 +121,8 @@ desktop-file-validate %{buildroot}%{_datadir}/applications/satdump.desktop
 %{_includedir}/satdump/
 
 %changelog
+* Sun Sep 27 2026 Jim Howard <xsnrg@users.noreply.github.com> - 2.0.0-0.14.20260921gitf3d82adbf
+- Disable -march=native (export CI=true): builder's AVX-512 ISA caused SIGILL at load
 * Sun Sep 27 2026 Jim Howard <xsnrg@users.noreply.github.com> - 2.0.0-0.13.20260921gitf3d82adbf
 - Fix static-init-order fiasco: satdump segfaulted at load on fc44/45/rawhide
 * Sun Sep 27 2026 Jim Howard <xsnrg@users.noreply.github.com> - 2.0.0-0.12.20260921gitf3d82adbf
