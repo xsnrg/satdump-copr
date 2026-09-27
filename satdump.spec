@@ -4,7 +4,7 @@
 
 Name:           satdump
 Version:        2.0.0
-Release:        0.3.%{commitdate}git%{shortcommit}%{?dist}
+Release:        0.4.%{commitdate}git%{shortcommit}%{?dist}
 Summary:        Generic satellite data processing software
 
 License:        GPL-3.0-or-later
@@ -90,10 +90,12 @@ desktop-file-validate %{buildroot}%{_datadir}/applications/satdump.desktop
 %doc README.md
 %{_bindir}/satdump
 %{_bindir}/satdump-ui
+%{_bindir}/satdump_sdr_server
 %{_libdir}/libsatdump*.so*
 %{_libdir}/satdump/
 %{_datadir}/satdump/
 %{_datadir}/applications/satdump.desktop
+%{_datadir}/icons/hicolor/
 %{_includedir}/satdump/
 
 %changelog
@@ -102,6 +104,9 @@ desktop-file-validate %{buildroot}%{_datadir}/applications/satdump.desktop
 
 * Sun Sep 27 2026 Jim Howard <xsnrg@users.noreply.github.com> - 2.0.0-0.3.20260921gitf3d82adbf
 - Add boost-devel (uhd usrp plugin headers)
+
+* Sun Sep 27 2026 Jim Howard <xsnrg@users.noreply.github.com> - 2.0.0-0.4.20260921gitf3d82adbf
+- Package satdump_sdr_server and hicolor icons added on master
 
 * Sun Sep 27 2026 Jim Howard <xsnrg@users.noreply.github.com> - 1.2.2-2
 - Drop BladeRF and LimeSuite; those -devel packages are not in Fedora
