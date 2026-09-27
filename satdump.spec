@@ -4,19 +4,19 @@
 
 Name:           satdump
 Version:        2.0.0
-Release:        0.7.%{commitdate}git%{shortcommit}%{?dist}
+Release:        0.8.%{commitdate}git%{shortcommit}%{?dist}
 Summary:        Generic satellite data processing software
 
 License:        GPL-3.0-or-later
 URL:            https://github.com/SatDump/SatDump
 Source0:        https://github.com/SatDump/SatDump/archive/%{commit}.tar.gz
 
-# GCC 16 on aarch64 segfaults in the annobin plugin compiling heavy
-# nlohmann/json + angelscript template translation units. Drop LTO and
-# annobin there; x86_64 is unaffected.
+# GCC 16 on aarch64 segfaults in cc1plus compiling heavy nlohmann/json +
+# angelscript template TUs at -O2 (independent of annobin/LTO). Use -O1 there.
 %ifarch aarch64
 %undefine _annotated_build
 %global _lto_cflags %{nil}
+%global optflags -O1 -g -pipe
 %endif
 
 BuildRequires:  cmake
@@ -107,6 +107,9 @@ desktop-file-validate %{buildroot}%{_datadir}/applications/satdump.desktop
 %{_includedir}/satdump/
 
 %changelog
+* Sun Sep 27 2026 Jim Howard <xsnrg@users.noreply.github.com> - 2.0.0-0.8.20260921gitf3d82adbf
+- aarch64: build -O1 to avoid GCC16 cc1plus segfault on nlohmann/angelscript
+
 * Sun Sep 27 2026 Jim Howard <xsnrg@users.noreply.github.com> - 2.0.0-0.7.20260921gitf3d82adbf
 - %undefine _annotated_build on aarch64 (0 does not disable the annobin macro)
 
