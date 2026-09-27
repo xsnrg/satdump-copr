@@ -4,7 +4,7 @@
 
 Name:           satdump
 Version:        2.0.0
-Release:        0.1.%{commitdate}git%{shortcommit}%{?dist}
+Release:        0.2.%{commitdate}git%{shortcommit}%{?dist}
 Summary:        Generic satellite data processing software
 
 License:        GPL-3.0-or-later
@@ -24,6 +24,7 @@ BuildRequires:  libtiff-devel
 BuildRequires:  libzstd-devel
 BuildRequires:  jemalloc-devel
 BuildRequires:  nng-devel
+BuildRequires:  sqlite-devel
 BuildRequires:  libcurl-devel
 BuildRequires:  glfw-devel
 BuildRequires:  armadillo-devel
@@ -95,8 +96,8 @@ desktop-file-validate %{buildroot}%{_datadir}/applications/satdump.desktop
 %{_includedir}/satdump/
 
 %changelog
-* Sun Sep 27 2026 Jim Howard <xsnrg@users.noreply.github.com> - 2.0.0-0.1.20260921gitf3d82adbf
-- Track current master; 1.2.2 is not where upstream fixes land
+* Sun Sep 27 2026 Jim Howard <xsnrg@users.noreply.github.com> - 2.0.0-0.2.20260921gitf3d82adbf
+- Add sqlite-devel required by master src-core
 
 * Sun Sep 27 2026 Jim Howard <xsnrg@users.noreply.github.com> - 1.2.2-2
 - Drop BladeRF and LimeSuite; those -devel packages are not in Fedora
