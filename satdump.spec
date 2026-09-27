@@ -4,7 +4,7 @@
 
 Name:           satdump
 Version:        2.0.0
-Release:        0.11.%{commitdate}git%{shortcommit}%{?dist}
+Release:        0.12.%{commitdate}git%{shortcommit}%{?dist}
 Summary:        Generic satellite data processing software
 
 License:        GPL-3.0-or-later
@@ -17,9 +17,11 @@ Source0:        https://github.com/SatDump/SatDump/archive/%{commit}.tar.gz
 %ifarch aarch64
 %global toolchain clang
 BuildRequires:  clang
-# Replace optflags to drop redhat-hardened-clang.cfg, which forces
-# _FORTIFY_SOURCE=3 and breaks the vendored libjpeg C under clang.
-%global optflags -O2 -g -pipe -Wall -Werror=format-security -fexceptions -fstack-protector-strong -fasynchronous-unwind-tables -fstack-clash-protection
+%global _lto_cflags %{nil}
+# Replace optflags to drop redhat-hardened-clang.cfg (forces _FORTIFY_SOURCE=3,
+# which breaks vendored libjpeg C under clang). Re-add -fPIE that the hardened
+# config would otherwise supply, else PIE link fails on __stack_chk_guard.
+%global optflags -O2 -g -pipe -Wall -Werror=format-security -fexceptions -fstack-protector-strong -fasynchronous-unwind-tables -fstack-clash-protection -fPIE
 %endif
 
 BuildRequires:  cmake
@@ -110,6 +112,9 @@ desktop-file-validate %{buildroot}%{_datadir}/applications/satdump.desktop
 %{_includedir}/satdump/
 
 %changelog
+* Sun Sep 27 2026 Jim Howard <xsnrg@users.noreply.github.com> - 2.0.0-0.12.20260921gitf3d82adbf
+- aarch64 clang: re-add -fPIE, disable LTO for PIE link
+
 * Sun Sep 27 2026 Jim Howard <xsnrg@users.noreply.github.com> - 2.0.0-0.11.20260921gitf3d82adbf
 - aarch64 clang: replace optflags to drop hardened config (no fortify)
 
