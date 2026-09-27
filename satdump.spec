@@ -1,6 +1,6 @@
 Name:           satdump
 Version:        1.2.2
-Release:        1%{?dist}
+Release:        2%{?dist}
 Summary:        Generic satellite data processing software
 
 License:        GPL-3.0-or-later
@@ -34,8 +34,6 @@ BuildRequires:  rtl-sdr-devel
 BuildRequires:  hackrf-devel
 BuildRequires:  airspyone_host-devel
 BuildRequires:  airspyhf-devel
-BuildRequires:  limesuite-devel
-BuildRequires:  libbladerf-devel
 BuildRequires:  uhd-devel
 BuildRequires:  libiio-devel
 
@@ -68,6 +66,8 @@ decodes, and processes recorded or live satellite transmissions.
   -DPLUGIN_RFNM_SDR_SUPPORT=OFF \
   -DPLUGIN_SDDC_SDR_SUPPORT=OFF \
   -DPLUGIN_SOAPY_SDR_SUPPORT=OFF \
+  -DPLUGIN_LIMESDR_SDR_SUPPORT=OFF \
+  -DPLUGIN_BLADERF_SDR_SUPPORT=OFF \
   %{simd_flags}
 %cmake_build
 
@@ -91,5 +91,8 @@ desktop-file-validate %{buildroot}%{_datadir}/applications/satdump.desktop
 %{_includedir}/satdump/
 
 %changelog
+* Sun Sep 27 2026 Jim Howard <xsnrg@users.noreply.github.com> - 1.2.2-2
+- Drop BladeRF and LimeSuite; those -devel packages are not in Fedora
+
 * Sun Sep 27 2026 Jim Howard <xsnrg@users.noreply.github.com> - 1.2.2-1
 - Initial Copr package of release 1.2.2
