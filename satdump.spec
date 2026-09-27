@@ -4,7 +4,7 @@
 
 Name:           satdump
 Version:        2.0.0
-Release:        0.9.%{commitdate}git%{shortcommit}%{?dist}
+Release:        0.10.%{commitdate}git%{shortcommit}%{?dist}
 Summary:        Generic satellite data processing software
 
 License:        GPL-3.0-or-later
@@ -17,6 +17,8 @@ Source0:        https://github.com/SatDump/SatDump/archive/%{commit}.tar.gz
 %ifarch aarch64
 %global toolchain clang
 BuildRequires:  clang
+# Vendored libjpeg (C) trips glibc _FORTIFY_SOURCE=3 annotations under clang.
+%global optflags %{optflags} -U_FORTIFY_SOURCE
 %endif
 
 BuildRequires:  cmake
@@ -107,6 +109,9 @@ desktop-file-validate %{buildroot}%{_datadir}/applications/satdump.desktop
 %{_includedir}/satdump/
 
 %changelog
+* Sun Sep 27 2026 Jim Howard <xsnrg@users.noreply.github.com> - 2.0.0-0.10.20260921gitf3d82adbf
+- aarch64 clang: -U_FORTIFY_SOURCE for vendored libjpeg
+
 * Sun Sep 27 2026 Jim Howard <xsnrg@users.noreply.github.com> - 2.0.0-0.9.20260921gitf3d82adbf
 - aarch64: build with clang (toolchain) around GCC16 cc1plus ICE
 
