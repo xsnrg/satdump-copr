@@ -1,0 +1,46 @@
+Fix static-initialization-order fiasco causing segfault at library load.
+
+satdump::RESPATH / satdump::LIBPATH were defined in satdump_vars.cpp and
+constructed via init_res_path()/init_lib_path(), which copy the globals
+RESOURCES_PATH / LIBRARIES_PATH defined in a different translation unit
+(the generated satdump_varst.cpp). There is no guaranteed dynamic-initialization
+order across translation units, so RESPATH could be constructed while
+RESOURCES_PATH was still zero-initialized (null data pointer). GCC 16's
+libstdc++ (fc44+) dereferences that null pointer even for a 0-length copy,
+so satdump segfaulted in _dl_init before main on fc44/45/rawhide.
+
+Define RESPATH/LIBPATH in the same TU (satdump_varst.cxx) immediately after
+RESOURCES_PATH/LIBRARIES_PATH so same-TU definition order guarantees they
+are constructed first.
+
+Upstream: https://github.com/SatDump/SatDump
+
+--- a/src-core/satdump_vars.cpp
++++ b/src-core/satdump_vars.cpp
+@@ -74,8 +74,8 @@
+     std::string init_res_path() { return std::string(RESOURCES_PATH); }
+     std::string init_lib_path() { return std::string(LIBRARIES_PATH); }
+ #endif
+-    std::string RESPATH = init_res_path();
+-    std::string LIBPATH = init_lib_path();
++    // RESPATH/LIBPATH moved to satdump_varst.cxx to fix static init order
++    // (they must be constructed after RESOURCES_PATH/LIBRARIES_PATH).
+
+     std::string getSatDumpVersionName() { return "SatDump v" + (std::string)SATDUMP_VERSION + (satdump::SATDUMP_VERSION_TAG.size() ? " (" + satdump::SATDUMP_VERSION_TAG + ")" : ""); }
+ } // namespace satdump
+\ No newline at end of file
+--- a/src-core/satdump_varst.cxx
++++ b/src-core/satdump_varst.cxx
+@@ -5,6 +5,12 @@
+ {
+     SATDUMP_DLL const std::string RESOURCES_PATH = "@RESOURCES_PATH@";
+     SATDUMP_DLL const std::string LIBRARIES_PATH = "@LIBRARIES_PATH@";
++    std::string init_res_path();
++    std::string init_lib_path();
++
++    std::string RESPATH = init_res_path();
++    std::string LIBPATH = init_lib_path();
++
+     SATDUMP_DLL const std::string SATDUMP_VERSION = "@SATDUMP_VERSION@";
+     SATDUMP_DLL const std::string SATDUMP_VERSION_TAG = "@SATDUMP_VERSION_TAG@";
+ } // namespace satdump

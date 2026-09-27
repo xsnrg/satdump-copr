@@ -4,12 +4,17 @@
 
 Name:           satdump
 Version:        2.0.0
-Release:        0.12.%{commitdate}git%{shortcommit}%{?dist}
+Release:        0.13.%{commitdate}git%{shortcommit}%{?dist}
 Summary:        Generic satellite data processing software
 
 License:        GPL-3.0-or-later
 URL:            https://github.com/SatDump/SatDump
 Source0:        https://github.com/SatDump/SatDump/archive/%{commit}.tar.gz
+
+# RESPATH/LIBPATH were constructed across TUs before RESOURCES_PATH was built;
+# GCC 16 libstdc++ dereferences the null dataptr at load and segfaults before
+# main on fc44/45/rawhide. Move their definitions next to RESOURCES_PATH.
+Patch0001:      0001-fix-static-init-order.patch
 
 # GCC 16 on aarch64 segfaults (cc1plus ICE) compiling heavy nlohmann/json +
 # angelscript template TUs at any -O level; annobin/LTO are not the cause.
@@ -112,6 +117,8 @@ desktop-file-validate %{buildroot}%{_datadir}/applications/satdump.desktop
 %{_includedir}/satdump/
 
 %changelog
+* Sun Sep 27 2026 Jim Howard <xsnrg@users.noreply.github.com> - 2.0.0-0.13.20260921gitf3d82adbf
+- Fix static-init-order fiasco: satdump segfaulted at load on fc44/45/rawhide
 * Sun Sep 27 2026 Jim Howard <xsnrg@users.noreply.github.com> - 2.0.0-0.12.20260921gitf3d82adbf
 - aarch64 clang: re-add -fPIE, disable LTO for PIE link
 
