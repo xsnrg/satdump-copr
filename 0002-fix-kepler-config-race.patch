@@ -1,0 +1,201 @@
+diff --git a/src-core/core/config.h b/src-core/core/config.h
+index 822a1e6e6..b85e881ee 100644
+--- a/src-core/core/config.h
++++ b/src-core/core/config.h
+@@ -5,6 +5,7 @@
+ #include "dll_export.h"
+ #include "nlohmann/json.hpp"
+ #include <functional>
++#include <mutex>
+ 
+ namespace satdump
+ {
+@@ -27,6 +28,11 @@ namespace satdump
+     {
+     public:                                                              // TODOREWORK make this private again
+         nlohmann::ordered_json main_cfg;                                 // The actual config we should use, that includes user changes
++        // Guards main_cfg against concurrent access. nlohmann::json is NOT thread-safe:
++        // a non-const operator[] on a missing key INSERTS, reallocating the backing
++        // container, so a background reader can dereference a freed key while iterating.
++        // Recursive so helper calls may nest. See kepler auto-update race.
++        mutable std::recursive_mutex config_mtx;
+         std::vector<config::PluginConfigHandler> plugin_config_handlers; // TODOREWORK handle UI rendering here!
+ 
+     public:                                 // TODOREWORK make private again asap!
+@@ -51,6 +57,7 @@ namespace satdump
+         template <typename T>
+         inline void tryAssignValueFromSatDumpGeneral(T &val, std::string variablename)
+         {
++            std::lock_guard<std::recursive_mutex> lock(config_mtx);
+             if (main_cfg["satdump_general"][variablename]["value"].is_null())
+                 return;
+             val = main_cfg["satdump_general"][variablename]["value"].get<T>();
+@@ -59,6 +66,7 @@ namespace satdump
+         template <typename T>
+         inline T getValueFromSatDumpGeneral(std::string variablename)
+         {
++            std::lock_guard<std::recursive_mutex> lock(config_mtx);
+             if (main_cfg["satdump_general"][variablename]["value"].is_null())
+                 throw satdump_exception("Config key " + variablename + " is missing!");
+             return main_cfg["satdump_general"][variablename]["value"].get<T>();
+@@ -67,6 +75,7 @@ namespace satdump
+         template <typename T>
+         inline T getValueFromSatDumpDirectories(std::string variablename)
+         {
++            std::lock_guard<std::recursive_mutex> lock(config_mtx);
+             if (main_cfg["satdump_directories"][variablename]["value"].is_null())
+                 throw satdump_exception("Config key " + variablename + " is missing!");
+             return main_cfg["satdump_directories"][variablename]["value"].get<T>();
+@@ -75,6 +84,7 @@ namespace satdump
+         template <typename T>
+         inline T getValueFromSatDumpUI(std::string variablename)
+         {
++            std::lock_guard<std::recursive_mutex> lock(config_mtx);
+             if (main_cfg["user_interface"][variablename]["value"].is_null())
+                 throw satdump_exception("Config key " + variablename + " is missing!");
+             return main_cfg["user_interface"][variablename]["value"].get<T>();
+diff --git a/src-core/db/kepler/kepler_handler.cpp b/src-core/db/kepler/kepler_handler.cpp
+index 498a30457..44536caaf 100644
+--- a/src-core/db/kepler/kepler_handler.cpp
++++ b/src-core/db/kepler/kepler_handler.cpp
+@@ -79,19 +79,34 @@ namespace satdump
+         // Schedule updates while running
+         if (honor_setting)
+         {
+-            eventBus->register_handler<AutoUpdateKeplersEvent>([this](AutoUpdateKeplersEvent evt) { updateKeplerDatabase(); });
++            // Snapshot config NOW, on this (main) thread, and bake it into the event.
++            // The scheduler fires the SAME event instance each interval on a worker
++            // thread; using the snapshot keeps that thread from touching the shared,
++            // unsynchronized main_cfg json.
++            eventBus->register_handler<AutoUpdateKeplersEvent>(
++                [this](AutoUpdateKeplersEvent evt)
++                { updateKeplerDatabase(evt.cfg); });
+             std::shared_ptr<AutoUpdateKeplersEvent> evt = std::make_shared<AutoUpdateKeplersEvent>();
++            evt->cfg = snapshotKeplerConfig();
+             taskScheduler->add_task<AutoUpdateKeplersEvent>("auto_kepler_update_todorework", evt, last_update, update_interval);
+         }
+     }
+ 
+-    void KeplerDBHandler::updateKeplerDatabase()
++    KeplerFetchConfig KeplerDBHandler::snapshotKeplerConfig()
++    {
++        std::lock_guard<std::recursive_mutex> lock(satdump_cfg.config_mtx);
++        KeplerFetchConfig cfg;
++        cfg.norads_to_fetch = satdump_cfg.main_cfg["kepler_settings"]["norads_to_fetch"].get<std::vector<int>>();
++        cfg.urls_to_fetch = satdump_cfg.main_cfg["kepler_settings"]["urls_to_fetch"].get<std::vector<std::string>>();
++        cfg.url_template = satdump_cfg.main_cfg["kepler_settings"]["url_template"].get<std::string>();
++        return cfg;
++    }
++
++    void KeplerDBHandler::updateKeplerDatabase(const KeplerFetchConfig &cfg)
+     {
+         logger->info("Updating Keplers...");
+-        std::vector<int> norads_to_fetch = satdump_cfg.main_cfg["kepler_settings"]["norads_to_fetch"].get<std::vector<int>>();
+-        std::vector<std::string> urls_to_fetch = satdump_cfg.main_cfg["kepler_settings"]["urls_to_fetch"].get<std::vector<std::string>>();
+ 
+-        for (auto &url_str : urls_to_fetch)
++        for (auto &url_str : cfg.urls_to_fetch)
+         {
+             auto keps = tryFetchOMMFileFromURL(url_str);
+ 
+@@ -101,9 +116,9 @@ namespace satdump
+             h->tr_end();
+         }
+ 
+-        for (int norad : norads_to_fetch)
++        for (int norad : cfg.norads_to_fetch)
+         {
+-            auto tles = tryFetchSingleOMMwithNorad(norad);
++            auto tles = tryFetchSingleOMMwithNorad(norad, cfg.url_template);
+             if (tles.size() == 1)
+                 putKepler(tles[0]);
+             else
+diff --git a/src-core/db/kepler/kepler_handler.h b/src-core/db/kepler/kepler_handler.h
+index 2645ff9ac..fe25df8ae 100644
+--- a/src-core/db/kepler/kepler_handler.h
++++ b/src-core/db/kepler/kepler_handler.h
+@@ -34,13 +34,27 @@ namespace satdump
+     std::vector<KeplerData> parseCcsdsOmmFile(std::string fileCont);
+ 
+     std::vector<KeplerData> tryFetchOMMFileFromURL(std::string url_str);
+-    std::vector<KeplerData> tryFetchSingleOMMwithNorad(int norad);
++    // url_template must be supplied by the caller (snapshotted from config on a
++    // safe thread) so this worker never touches the shared, unsynchronized
++    // satdump_cfg.main_cfg json.
++    std::vector<KeplerData> tryFetchSingleOMMwithNorad(int norad, const std::string &url_template);
++
++    // Immutable snapshot of the config values the kepler updater needs. Captured on
++    // the main/UI thread, then handed to the background worker. Avoids racing the
++    // shared main_cfg json (which is not thread-safe; see config.h).
++    struct KeplerFetchConfig
++    {
++        std::vector<std::string> urls_to_fetch;
++        std::vector<int> norads_to_fetch;
++        std::string url_template;
++    };
+ 
+     class KeplerDBHandler : public DBHandlerBase
+     {
+     private:
+         struct AutoUpdateKeplersEvent
+         {
++            KeplerFetchConfig cfg;
+         };
+ 
+     public:
+@@ -52,8 +66,14 @@ namespace satdump
+         bool getKepler(KeplerData &kep, int norad, time_t time = -1);
+         std::vector<KeplerData> getAllNewestKepler();
+ 
++        // Read the kepler settings out of config. Call from a thread-safe point
++        // (main/UI thread), NOT from a scheduler/worker thread.
++        KeplerFetchConfig snapshotKeplerConfig();
++        // Background-safe: uses only the supplied snapshot, never live config.
++        void updateKeplerDatabase(const KeplerFetchConfig &cfg);
++        // Convenience for main-thread callers: snapshot then run.
+         void autoUpdateKeplers();
+-        void updateKeplerDatabase();
++        void updateKeplerDatabase() { updateKeplerDatabase(snapshotKeplerConfig()); }
+ 
+     public: // Legacy
+         std::optional<TLE> get_from_norad(int norad)
+diff --git a/src-core/db/kepler/kepler_utils.cpp b/src-core/db/kepler/kepler_utils.cpp
+index b65101970..4aa0a06e1 100644
+--- a/src-core/db/kepler/kepler_utils.cpp
++++ b/src-core/db/kepler/kepler_utils.cpp
+@@ -260,12 +260,12 @@ namespace satdump
+         return new_registry;
+     }
+ 
+-    std::vector<KeplerData> tryFetchSingleOMMwithNorad(int norad)
++    std::vector<KeplerData> tryFetchSingleOMMwithNorad(int norad, const std::string &url_template)
+     {
+         bool success = true;
+         std::vector<KeplerData> new_registry;
+ 
+-        std::string url_str = satdump_cfg.main_cfg["kepler_settings"]["url_template"].get<std::string>();
++        std::string url_str = url_template;
+         while (url_str.find("%NORAD%") != std::string::npos)
+             url_str.replace(url_str.find("%NORAD%"), 7, std::to_string(norad));
+ 
+diff --git a/src-interface/settings.cpp b/src-interface/settings.cpp
+index f1881c29b..3888c5213 100644
+--- a/src-interface/settings.cpp
++++ b/src-interface/settings.cpp
+@@ -194,11 +194,14 @@ namespace satdump
+                         style::beginDisabled();
+                     if (ImGui::Button(_("Update###updateKeplers")))
+                     {
++                        // Snapshot config on the UI thread; the worker thread must not
++                        // read the shared main_cfg json directly.
++                        auto kcfg = db_keplers->snapshotKeplerConfig();
+                         ui_thread_pool.push(
+-                            [](int)
++                            [kcfg](int)
+                             {
+                                 tles_are_update = true;
+-                                db_keplers->updateKeplerDatabase();
++                                db_keplers->updateKeplerDatabase(kcfg);
+                                 tles_are_update = false;
+                             });
+                     }
