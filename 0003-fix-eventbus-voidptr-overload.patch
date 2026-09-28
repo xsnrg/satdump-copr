@@ -1,0 +1,14 @@
+diff --git a/src-core/utils/event_bus.h b/src-core/utils/event_bus.h
+index 015c201cd..f3221e797 100644
+--- a/src-core/utils/event_bus.h
++++ b/src-core/utils/event_bus.h
+@@ -81,7 +81,7 @@ namespace satdump
+             handlers_mtx.unlock();
+             for (std::pair<std::string, std::function<void(void *)>> h : lcopy) // Iterate through all registered functions
+                 if (evt_name == h.first)                                        // Check struct type is the same
+-                    h.second((void *)&evt);                                     // Fire handler up
++                    h.second(evt);                                              // Fire handler up: evt IS the object pointer (was &evt, i.e. void**)
+         }
+     };
+ } // namespace satdump
+\ No newline at end of file

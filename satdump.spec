@@ -4,7 +4,7 @@
 
 Name:           satdump
 Version:        2.0.0
-Release:        0.15.%{commitdate}git%{shortcommit}%{?dist}
+Release:        0.16.%{commitdate}git%{shortcommit}%{?dist}
 Summary:        Generic satellite data processing software
 
 License:        GPL-3.0-or-later
@@ -22,6 +22,13 @@ Patch0001:      0001-fix-static-init-order.patch
 # key -> SIGSEGV at startup. Snapshot the kepler config on a safe thread and hand
 # it to the worker; add a recursive_mutex to the config helpers.
 Patch0002:      0002-fix-kepler-config-race.patch
+
+# EventBus::fire_event(void*, name) passed &evt (a void**, the address of the
+# local pointer param) to handlers instead of evt (the object pointer). Handlers
+# cast raw back to T*, so empty event structs masked it; any non-empty scheduled
+# event (e.g. AutoUpdateKeplersEvent carrying a config snapshot) reinterpreted the
+# 8-byte pointer as the struct -> garbage vector size -> std::bad_alloc on fire.
+Patch0003:      0003-fix-eventbus-voidptr-overload.patch
 
 # GCC 16 on aarch64 segfaults (cc1plus ICE) compiling heavy nlohmann/json +
 # angelscript template TUs at any -O level; annobin/LTO are not the cause.
@@ -128,6 +135,8 @@ desktop-file-validate %{buildroot}%{_datadir}/applications/satdump.desktop
 %{_includedir}/satdump/
 
 %changelog
+* Sun Sep 28 2026 Jim Howard <xsnrg@users.noreply.github.com> - 2.0.0-0.16.20260921gitf3d82adbf
+- Fix EventBus::fire_event(void*,name) passing &evt (void**) instead of evt; masked while scheduled events were empty, caused bad_alloc once the kepler update event carried a config payload
 * Sun Sep 27 2026 Jim Howard <xsnrg@users.noreply.github.com> - 2.0.0-0.15.20260921gitf3d82adbf
 - Fix Kepler auto-update SIGSEGV: snapshot config on safe thread; worker no longer races unsynchronized main_cfg json
 * Sun Sep 27 2026 Jim Howard <xsnrg@users.noreply.github.com> - 2.0.0-0.14.20260921gitf3d82adbf
